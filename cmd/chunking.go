@@ -8,6 +8,7 @@ type FileRecord struct {
 type ChunkRecord struct {
 	start uint64
 	length uint32
+	index uint32
 }
 
 func GetChunksForFile(record FileRecord) []ChunkRecord {
@@ -20,12 +21,14 @@ func GetChunksForFile(record FileRecord) []ChunkRecord {
 		records[i] = ChunkRecord{
 			start:  i * uint64(record.chunkSize),
 			length: record.chunkSize,
+			index:  uint32(i),
 		}
 	}
 	start := (recordCount-1) * uint64(record.chunkSize)
 	records[recordCount-1] = ChunkRecord{
 		start:  start,
 		length: uint32(record.fileSize - start),
+		index: uint32(recordCount),
 	}
 	return records
 }
