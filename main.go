@@ -1,7 +1,7 @@
 package main
 
-import "fmt"
+import "github.com/tobymiller/s3-fast-transfer/cmd"
 
 func main() {
-	fmt.Println("hello world")
+	cmd.Execute()
 }

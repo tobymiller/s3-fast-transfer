@@ -1,8 +1,5 @@
-module github.com/tobymiller/s3-benchmark
+module github.com/tobymiller/s3-fast-transfer
 
-go 1.13
+go 1.15
 
-require (
-	github.com/aws/aws-sdk-go-v2 v0.7.0
-	github.com/schollz/progressbar/v2 v2.0.0-20190307141100-7e454dc2feed
-)
+require github.com/spf13/cobra v1.1.1
