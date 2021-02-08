@@ -11,8 +11,8 @@ func TestGetChunksForFile(t *testing.T) {
 		expectedOutput []ChunkRecord
 	}{
 		{FileRecord{
-			chunkSize: 1,
-			fileSize:  1,
+			ChunkSize: 1,
+			FileSize:  1,
 		}, []ChunkRecord{
 			{
 				start:  0,
@@ -20,8 +20,8 @@ func TestGetChunksForFile(t *testing.T) {
 			},
 		}},
 		{FileRecord{
-			chunkSize: 2,
-			fileSize:  1,
+			ChunkSize: 2,
+			FileSize:  1,
 		}, []ChunkRecord{
 			{
 				start:  0,
@@ -29,12 +29,12 @@ func TestGetChunksForFile(t *testing.T) {
 			},
 		}},
 		{FileRecord{
-			chunkSize: 1,
-			fileSize:  0,
+			ChunkSize: 1,
+			FileSize:  0,
 		}, []ChunkRecord{}},
 		{FileRecord{
-			chunkSize: 2,
-			fileSize:  3,
+			ChunkSize: 2,
+			FileSize:  3,
 		}, []ChunkRecord{
 			{
 				start:  0,
@@ -46,8 +46,8 @@ func TestGetChunksForFile(t *testing.T) {
 			},
 		}},
 		{FileRecord{
-			chunkSize: 2,
-			fileSize:  4,
+			ChunkSize: 2,
+			FileSize:  4,
 		}, []ChunkRecord{
 			{
 				start:  0,
