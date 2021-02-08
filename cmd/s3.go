@@ -52,18 +52,18 @@ func setupS3Client() {
 	s3Client = s3.NewFromConfig(cfg)
 }
 
-func download(abstractLocation S3AbstractLocation, chunk ChunkRecord, outFile os.File) {
+func download(abstractLocation S3AbstractLocation, chunk ChunkRecord, outFile os.File) error {
 	location := abstractLocation.GetChunkLocation(chunk)
 	resp, err := s3Client.GetObject(s3Context, &s3.GetObjectInput{
 		Bucket: aws.String(location.bucket),
 		Key:    aws.String(location.key),
 	})
 	if err != nil {
-		panic("Failed to get object: " + err.Error())
+		return err
 	}
 	_, err = outFile.Seek(int64(chunk.start),0)
 	if err != nil {
-		panic("Failed to seek for writing: " + err.Error())
+		return err
 	}
 	var buf = make([]byte, bufferLength)
 	for {
@@ -73,13 +73,14 @@ func download(abstractLocation S3AbstractLocation, chunk ChunkRecord, outFile os
 			break
 		}
 		if err != nil {
-			panic("Error reading object body: " + err.Error())
+			return err
 		}
 		if err2 != nil {
-			panic("Error reading object body: " + err2.Error())
+			return err
 		}
 	}
 	_ = resp.Body.Close()
+	return nil
 }
 
 type S3ReaderFunc func([]byte) (int, error)
@@ -88,11 +89,11 @@ func (r S3ReaderFunc) Read(b []byte) (int, error) {
 	return r(b)
 }
 
-func upload(abstractLocation S3AbstractLocation, chunk ChunkRecord, inFile os.File) {
+func upload(abstractLocation S3AbstractLocation, chunk ChunkRecord, inFile os.File) error {
 	location := abstractLocation.GetChunkLocation(chunk)
 	_, err := inFile.Seek(int64(chunk.start),0)
 	if err != nil {
-		panic("Failed to seek for reading: " + err.Error())
+		return err
 	}
 	bytesLeft := chunk.length
 	_, err = s3Client.PutObject(s3Context, &s3.PutObjectInput{
@@ -111,7 +112,5 @@ func upload(abstractLocation S3AbstractLocation, chunk ChunkRecord, inFile os.Fi
 			return n, e
 		}),
 	})
-	if err != nil {
-		panic("Failed to put object: " + err.Error())
-	}
+	return err
 }

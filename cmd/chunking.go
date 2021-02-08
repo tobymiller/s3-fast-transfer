@@ -1,5 +1,7 @@
 package cmd
 
+import "os"
+
 type FileRecord struct {
 	ChunkSize uint32
 	FileSize  uint64
@@ -11,12 +13,24 @@ type ChunkRecord struct {
 	index uint32
 }
 
-func GetChunksForFile(record FileRecord) []ChunkRecord {
+func GetFileRecordForPath(path string, chunkSize uint32) (FileRecord, error) {
+	stat, err := os.Stat(path)
+	if err != nil {
+		return FileRecord{}, err
+	}
+	length := stat.Size()
+	return FileRecord{
+		ChunkSize: chunkSize,
+		FileSize:  uint64(length),
+	}, nil
+}
+
+func GetChunksForFile(record FileRecord) []interface{} {
 	if record.FileSize == 0 {
-		return []ChunkRecord{}
+		return []interface{}{}
 	}
 	recordCount := ((record.FileSize - 1) / uint64(record.ChunkSize)) + 1
-	records := make([]ChunkRecord, recordCount)
+	records := make([]interface{}, recordCount)
 	for i := uint64(0); i < recordCount - 1; i++ {
 		records[i] = ChunkRecord{
 			start:  i * uint64(record.ChunkSize),

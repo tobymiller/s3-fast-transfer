@@ -3,7 +3,7 @@
 
 package cmd
 
-type ThreadDataFunc func() (interface{}, error)
+type ThreadDataFunc func() (interface{}, error, func() error)
 type ThreadFunc func(input interface{}, threadData interface{}) (interface{}, error)
 
 func RunThreads(threadFunc ThreadFunc, inputs []interface{}, threadDataFunc ThreadDataFunc, threadCount int) []interface{} {
@@ -26,7 +26,7 @@ func RunThreads(threadFunc ThreadFunc, inputs []interface{}, threadDataFunc Thre
 	// create the workers for all the threads in this test
 	for w := 1; w <= threadCount; w++ {
 		go func(tasks <-chan Indexed, results chan<- ThreadResponse) {
-			threadData, err := threadDataFunc()
+			threadData, err, dispose := threadDataFunc()
 			if err != nil {
 				panic(err)
 			}
@@ -37,6 +37,10 @@ func RunThreads(threadFunc ThreadFunc, inputs []interface{}, threadDataFunc Thre
 					response: r,
 					err:      err,
 				}
+			}
+			err = dispose()
+			if err != nil {
+				panic(err)
 			}
 		}(tasks, results)
 	}
