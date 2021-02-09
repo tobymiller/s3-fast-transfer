@@ -15,6 +15,7 @@ var uploadCmd = &cobra.Command{
 	Use:   "upload",
 	Short: "Upload a local file to S3",
 	Run: func(cmd *cobra.Command, args []string) {
+		setupS3Client()
 		s3Abstract = S3AbstractLocation{
 			bucket:     bucket,
 			filePrefix: uploadKey,
