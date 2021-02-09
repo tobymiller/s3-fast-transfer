@@ -1,7 +1,9 @@
 package cmd
 
 import (
+	"bytes"
 	"context"
+	"errors"
 	"fmt"
 	"github.com/aws/aws-sdk-go-v2/aws"
 	"github.com/aws/aws-sdk-go-v2/config"
@@ -102,34 +104,24 @@ func download(abstractLocation S3AbstractLocation, chunk ChunkRecord, outFile os
 	return nil
 }
 
-type S3ReaderFunc func([]byte) (int, error)
-
-func (r S3ReaderFunc) Read(b []byte) (int, error) {
-	return r(b)
-}
-
 func upload(abstractLocation S3AbstractLocation, chunk ChunkRecord, inFile os.File) error {
 	location := abstractLocation.GetChunkLocation(chunk)
 	_, err := inFile.Seek(int64(chunk.start),0)
 	if err != nil {
 		return err
 	}
-	bytesLeft := chunk.length
+	var buf = make([]byte, bufferLength)
+	n, e := inFile.Read(buf)
+	if e != nil {
+		return err
+	}
+	if n != bufferLength {
+		return errors.New("did not read whole buffer")
+	}
 	_, err = s3Client.PutObject(s3Context, &s3.PutObjectInput{
 		Bucket: aws.String(location.bucket),
 		Key:    aws.String(location.key),
-		Body:   S3ReaderFunc(func(b []byte) (int, error) {
-			bb := b
-			if uint32(len(b)) > bytesLeft {
-				bb = b[:bytesLeft]
-			}
-			n, e := inFile.Read(bb)
-			bytesLeft -= uint32(n)
-			if bytesLeft == 0 {
-				e = io.EOF
-			}
-			return n, e
-		}),
+		Body:   bytes.NewReader(buf),
 	})
 	return err
 }
