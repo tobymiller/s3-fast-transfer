@@ -93,17 +93,19 @@ func download(abstractLocation S3AbstractLocation, chunk ChunkRecord, outFile os
 	if err != nil {
 		return err
 	}
+	total := 0
 	for {
-		_, err := io.ReadFull(resp.Body, buf)
+		n, err := io.ReadFull(resp.Body, buf)
 		_, err2 := outFile.Write(buf)
-		if err == io.EOF || err == io.ErrUnexpectedEOF {
+		total += n
+		if err == io.EOF || err == io.ErrUnexpectedEOF || uint32(total) >= chunk.length {
 			break
 		}
 		if err != nil {
 			return err
 		}
 		if err2 != nil {
-			return err
+			return err2
 		}
 	}
 	_ = resp.Body.Close()
