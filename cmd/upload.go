@@ -10,6 +10,7 @@ import (
 var uploadInput string
 var uploadKey string
 var s3Abstract S3AbstractLocation
+var chunkSize uint32
 
 var uploadCmd = &cobra.Command{
 	Use:   "upload",
@@ -41,6 +42,7 @@ func uploadOpenFile() (interface{}, error, func() error) {
 
 func init() {
 	rootCmd.AddCommand(uploadCmd)
+	uploadCmd.Flags().Uint32Var(&chunkSize, "chunkSize", 1024 * 1024, "Chunk size in bytes")
 	uploadCmd.Flags().StringVar(&uploadInput, "input", "", "Input file path")
 	uploadCmd.Flags().StringVar(&uploadKey, "key", "", "S3 Key")
 }

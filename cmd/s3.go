@@ -110,12 +110,12 @@ func upload(abstractLocation S3AbstractLocation, chunk ChunkRecord, inFile os.Fi
 	if err != nil {
 		return err
 	}
-	var buf = make([]byte, bufferLength)
+	var buf = make([]byte, chunk.length)
 	n, e := inFile.Read(buf)
 	if e != nil {
 		return err
 	}
-	if n != bufferLength {
+	if uint32(n) != chunk.length {
 		return errors.New("did not read whole buffer")
 	}
 	_, err = s3Client.PutObject(s3Context, &s3.PutObjectInput{

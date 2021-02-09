@@ -7,7 +7,6 @@ import (
 )
 
 var bucket string
-var chunkSize uint32
 var threadCount uint8
 
 var rootCmd = &cobra.Command{
@@ -24,6 +23,5 @@ func Execute() {
 
 func init() {
 	rootCmd.PersistentFlags().StringVar(&bucket, "bucket", "", "S3 bucket")
-	rootCmd.PersistentFlags().Uint32Var(&chunkSize, "chunkSize", 1024 * 1024, "Chunk size in bytes")
 	rootCmd.PersistentFlags().Uint8Var(&threadCount, "threadCount", 8, "Number of parallel streams to S3")
 }
