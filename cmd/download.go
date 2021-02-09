@@ -39,7 +39,7 @@ func downloadOpenFile() (interface{}, error, func() error) {
 }
 
 func init() {
-	rootCmd.AddCommand(uploadCmd)
+	rootCmd.AddCommand(downloadCmd)
 	uploadCmd.Flags().Uint32Var(&chunkSize, "chunkSize", 1024 * 1024, "Chunk size in bytes")
 	uploadCmd.Flags().StringVar(&downloadInput, "input", "", "Output file path")
 	uploadCmd.Flags().StringVar(&downloadKey, "key", "", "S3 Key")
