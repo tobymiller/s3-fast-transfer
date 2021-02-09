@@ -37,8 +37,8 @@ type FileAndBuffer struct  {
 }
 
 func downloadPart(chunk interface{}, fileAndBuffer interface{}) (interface{}, error) {
-	file := fileAndBuffer.(*FileAndBuffer).file
-	buffer := fileAndBuffer.(*FileAndBuffer).buffer
+	file := fileAndBuffer.(FileAndBuffer).file
+	buffer := fileAndBuffer.(FileAndBuffer).buffer
 	err := download(s3Abstract, chunk.(ChunkRecord), *file, buffer)
 	return 0, err
 }
