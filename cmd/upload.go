@@ -1,6 +1,7 @@
 package cmd
 
 import (
+	json2 "encoding/json"
 	"os"
 	"syscall"
 
@@ -10,7 +11,10 @@ import (
 var uploadInput string
 var uploadKey string
 var s3Abstract S3AbstractLocation
-var chunkSize uint32
+
+// It's important that this is a multiple of all the direct io block sizes for different platforms.
+// Fortunately they're all 4096, but I'm making this a constant so that users can't accidentally set it to something that isn't aligned.
+var chunkSize uint32 = 32 * 1024 * 1024
 
 var uploadCmd = &cobra.Command{
 	Use:   "upload",
@@ -25,8 +29,13 @@ var uploadCmd = &cobra.Command{
 		if err != nil {
 			panic(err)
 		}
+		recordJson, err := json2.Marshal(record)
+		if err != nil {
+			panic(err)
+		}
 		chunks := GetChunksForFile(record)
 		RunThreads(uploadPart, chunks, uploadOpenFile, int(threadCount))
+		uploadJson(s3Abstract, recordJson)
 	},
 }
 
@@ -42,7 +51,6 @@ func uploadOpenFile() (interface{}, error, func() error) {
 
 func init() {
 	rootCmd.AddCommand(uploadCmd)
-	uploadCmd.Flags().Uint32Var(&chunkSize, "chunkSize", 1024 * 1024, "Chunk size in bytes")
 	uploadCmd.Flags().StringVar(&uploadInput, "input", "", "Input file path")
 	uploadCmd.Flags().StringVar(&uploadKey, "key", "", "S3 Key")
 }

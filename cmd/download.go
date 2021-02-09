@@ -1,6 +1,7 @@
 package cmd
 
 import (
+	json2 "encoding/json"
 	"github.com/ncw/directio"
 	"os"
 	"syscall"
@@ -22,12 +23,20 @@ var downloadCmd = &cobra.Command{
 			bucket:     bucket,
 			filePrefix: downloadKey,
 		}
-		record := FileRecord{
-			ChunkSize: chunkSize,
-			FileSize:  fileSize,
+		json, err := downloadJson(s3Abstract)
+		if err != nil {
+			panic(err)
+		}
+		var record FileRecord
+		err = json2.Unmarshal(json, &record)
+		if err != nil {
+			panic(err)
 		}
 		chunks := GetChunksForFile(record)
 		RunThreads(downloadPart, chunks, downloadOpenFile, int(threadCount))
+		err = os.Truncate(downloadInput, int64(record.FileSize))
+		// Ignore error, which happens when the file isn't a regular file.
+		// We may have written past the end, to the nearest aligned block, but there's nothing we can do to fix that.
 	},
 }
 
@@ -54,8 +63,6 @@ func downloadOpenFile() (interface{}, error, func() error) {
 
 func init() {
 	rootCmd.AddCommand(downloadCmd)
-	downloadCmd.Flags().Uint32Var(&chunkSize, "chunkSize", 1024 * 1024, "Chunk size in bytes")
-	downloadCmd.Flags().Uint64Var(&fileSize, "fileSize", 0, "File size in bytes")
-	downloadCmd.Flags().StringVar(&downloadInput, "input", "", "Output file path")
+	downloadCmd.Flags().StringVar(&downloadInput, "output", "", "Output file path")
 	downloadCmd.Flags().StringVar(&downloadKey, "key", "", "S3 Key")
 }

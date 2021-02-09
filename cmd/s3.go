@@ -32,6 +32,13 @@ func (l* S3AbstractLocation) GetChunkLocation(chunk ChunkRecord) S3Location {
 	}
 }
 
+func (l* S3AbstractLocation) GetJsonLocation() S3Location {
+	return S3Location{
+		bucket: l.bucket,
+		key:    fmt.Sprintf("%s/manifest.json", l.filePrefix),
+	}
+}
+
 var bufferLength = 1024 * 1024
 
 var s3Client *s3.Client
@@ -123,4 +130,26 @@ func upload(abstractLocation S3AbstractLocation, chunk ChunkRecord, inFile os.Fi
 		Body:   bytes.NewReader(buf),
 	})
 	return err
+}
+
+func uploadJson(abstractLocation S3AbstractLocation, json []byte) error {
+	location := abstractLocation.GetJsonLocation()
+	_, err := s3Client.PutObject(s3Context, &s3.PutObjectInput{
+		Bucket: aws.String(location.bucket),
+		Key:    aws.String(location.key),
+		Body:   bytes.NewReader(json),
+	})
+	return err
+}
+
+func downloadJson(abstractLocation S3AbstractLocation) ([]byte, error) {
+	location := abstractLocation.GetJsonLocation()
+	res, err := s3Client.GetObject(s3Context, &s3.GetObjectInput{
+		Bucket: aws.String(location.bucket),
+		Key:    aws.String(location.key),
+	})
+	if err != nil {
+		return nil, err
+	}
+	return ioutil.ReadAll(res.Body)
 }
