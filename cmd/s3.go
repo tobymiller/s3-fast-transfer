@@ -73,7 +73,7 @@ func setupS3Client() {
 	s3Client = s3.NewFromConfig(cfg)
 }
 
-func download(abstractLocation S3AbstractLocation, chunk ChunkRecord, outFile os.File) error {
+func download(abstractLocation S3AbstractLocation, chunk ChunkRecord, outFile os.File, buf []byte) error {
 	location := abstractLocation.GetChunkLocation(chunk)
 	resp, err := s3Client.GetObject(s3Context, &s3.GetObjectInput{
 		Bucket: aws.String(location.bucket),
@@ -86,11 +86,10 @@ func download(abstractLocation S3AbstractLocation, chunk ChunkRecord, outFile os
 	if err != nil {
 		return err
 	}
-	var buf = make([]byte, bufferLength)
 	for {
-		n, err := resp.Body.Read(buf)
-		_, err2 := outFile.Write(buf[:n])
-		if err == io.EOF {
+		_, err := io.ReadFull(resp.Body, buf)
+		_, err2 := outFile.Write(buf)
+		if err == io.EOF || err == io.ErrUnexpectedEOF {
 			break
 		}
 		if err != nil {

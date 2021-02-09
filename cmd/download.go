@@ -1,6 +1,7 @@
 package cmd
 
 import (
+	"github.com/ncw/directio"
 	"os"
 	"syscall"
 
@@ -30,14 +31,25 @@ var downloadCmd = &cobra.Command{
 	},
 }
 
-func downloadPart(chunk interface{}, file interface{}) (interface{}, error) {
-	err := download(s3Abstract, chunk.(ChunkRecord), *file.(*os.File))
+type FileAndBuffer struct  {
+	file *os.File
+	buffer []byte
+}
+
+func downloadPart(chunk interface{}, fileAndBuffer interface{}) (interface{}, error) {
+	file := fileAndBuffer.(*FileAndBuffer).file
+	buffer := fileAndBuffer.(*FileAndBuffer).buffer
+	err := download(s3Abstract, chunk.(ChunkRecord), *file, buffer)
 	return 0, err
 }
 
 func downloadOpenFile() (interface{}, error, func() error) {
-	file, err := os.OpenFile(downloadInput, syscall.O_RDWR|syscall.O_CREAT, 0666)
-	return file, err, file.Close
+	file, err := directio.OpenFile(downloadInput, syscall.O_RDWR|syscall.O_CREAT, 0666)
+	block := directio.AlignedBlock(directio.BlockSize)
+	return FileAndBuffer{
+		file,
+		block,
+	}, err, file.Close
 }
 
 func init() {
