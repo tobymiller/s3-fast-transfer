@@ -55,9 +55,6 @@ func downloadPart(chunk interface{}, fileAndBuffer interface{}) (interface{}, er
 
 func downloadOpenFile() (interface{}, error, func() error) {
 	stat, err := os.Stat(downloadInput)
-	if err != nil {
-		return nil, err, nil
-	}
 	var file *os.File
 	if os.IsNotExist(err) {
 		file, err = os.OpenFile(downloadInput, syscall.O_WRONLY|syscall.O_CREAT, 0666)
