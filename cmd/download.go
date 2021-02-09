@@ -10,6 +10,8 @@ import (
 var downloadInput string
 var downloadKey string
 
+var fileSize uint64
+
 var downloadCmd = &cobra.Command{
 	Use:   "download",
 	Short: "Download a local file from S3",
@@ -19,9 +21,9 @@ var downloadCmd = &cobra.Command{
 			bucket:     bucket,
 			filePrefix: downloadKey,
 		}
-		record, err := GetFileRecordForPath(downloadInput, chunkSize)
-		if err != nil {
-			panic(err)
+		record := FileRecord{
+			ChunkSize: chunkSize,
+			FileSize:  fileSize,
 		}
 		chunks := GetChunksForFile(record)
 		RunThreads(downloadPart, chunks, downloadOpenFile, int(threadCount))
@@ -41,6 +43,7 @@ func downloadOpenFile() (interface{}, error, func() error) {
 func init() {
 	rootCmd.AddCommand(downloadCmd)
 	downloadCmd.Flags().Uint32Var(&chunkSize, "chunkSize", 1024 * 1024, "Chunk size in bytes")
+	downloadCmd.Flags().Uint64Var(&fileSize, "fileSize", 0, "File size in bytes")
 	downloadCmd.Flags().StringVar(&downloadInput, "input", "", "Output file path")
 	downloadCmd.Flags().StringVar(&downloadKey, "key", "", "S3 Key")
 }
