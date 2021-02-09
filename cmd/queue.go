@@ -25,11 +25,11 @@ func RunThreads(threadFunc ThreadFunc, inputs []interface{}, threadDataFunc Thre
 
 	// create the workers for all the threads in this test
 	for w := 1; w <= threadCount; w++ {
-		go func(tasks <-chan Indexed, results chan<- ThreadResponse) {
-			threadData, err, dispose := threadDataFunc()
-			if err != nil {
-				panic(err)
-			}
+		threadData, err, dispose := threadDataFunc()
+		if err != nil {
+			panic(err)
+		}
+		go func(tasks <-chan Indexed, results chan<- ThreadResponse, threadData interface{}, dispose func() error) {
 			for task := range tasks {
 				r, err := threadFunc(task.t, threadData)
 				results <- ThreadResponse{
@@ -42,7 +42,7 @@ func RunThreads(threadFunc ThreadFunc, inputs []interface{}, threadDataFunc Thre
 			if err != nil {
 				panic(err)
 			}
-		}(tasks, results)
+		}(tasks, results, threadData, dispose)
 	}
 
 	for i := 0; i < len(inputs); i++ {

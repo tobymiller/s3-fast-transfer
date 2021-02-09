@@ -2,6 +2,7 @@ package cmd
 
 import (
 	json2 "encoding/json"
+	"errors"
 	"github.com/ncw/directio"
 	"os"
 	"syscall"
@@ -53,7 +54,24 @@ func downloadPart(chunk interface{}, fileAndBuffer interface{}) (interface{}, er
 }
 
 func downloadOpenFile() (interface{}, error, func() error) {
-	file, err := directio.OpenFile(downloadInput, syscall.O_RDWR|syscall.O_CREAT, 0666)
+	stat, err := os.Stat(downloadInput)
+	if err != nil {
+		return nil, err, nil
+	}
+	var file *os.File
+	if os.IsNotExist(err) {
+		file, err = os.OpenFile(downloadInput, syscall.O_WRONLY|syscall.O_CREAT, 0666)
+	} else if err != nil {
+		return nil, err, nil
+	} else {
+		if stat.Mode().IsDir() {
+			return nil, errors.New("output is directory"), nil
+		} else if stat.Mode().IsRegular() {
+			file, err = os.OpenFile(downloadInput, syscall.O_WRONLY|syscall.O_TRUNC, 0666)
+		} else { // assume it's a block device for now
+			file, err = directio.OpenFile(downloadInput, syscall.O_WRONLY|syscall.O_SYNC, 0666)
+		}
+	}
 	block := directio.AlignedBlock(directio.BlockSize)
 	return FileAndBuffer{
 		file,
