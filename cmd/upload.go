@@ -36,7 +36,7 @@ func uploadPart(chunk interface{}, file interface{}) (interface{}, error) {
 }
 
 func uploadOpenFile() (interface{}, error, func() error) {
-	file, err := os.OpenFile(uploadInput, syscall.O_RDWR|syscall.O_CREAT, 0666)
+	file, err := os.OpenFile(uploadInput, syscall.O_RDONLY, 0)
 	return file, err, file.Close
 }
 
