@@ -7,6 +7,7 @@ import (
 	"github.com/aws/aws-sdk-go-v2/config"
 	"github.com/aws/aws-sdk-go-v2/service/s3"
 	"io"
+	"io/ioutil"
 	"net/http"
 	"os"
 	"time"
@@ -34,6 +35,25 @@ var bufferLength = 1024 * 1024
 var s3Client *s3.Client
 var s3Context = context.Background()
 
+func getRegion() string {
+	httpClient := &http.Client{
+		Timeout: time.Second,
+	}
+
+	link := "http://169.254.169.254/latest/meta-data/placement/availability-zone"
+	response, err := httpClient.Get(link)
+	if err != nil {
+		panic(err)
+	}
+
+	content, _ := ioutil.ReadAll(response.Body)
+	_ = response.Body.Close()
+
+	az := string(content)
+
+	return az[:len(az)-1]
+}
+
 func setupS3Client() {
 	// gets the AWS credentials from the default file or from the EC2 instance profile
 	cfg, err := config.LoadDefaultConfig(s3Context)
@@ -41,8 +61,7 @@ func setupS3Client() {
 		panic("Unable to load AWS SDK config: " + err.Error())
 	}
 
-	// set the SDK region to either the one from the program arguments or else to the same region as the EC2 instance
-	// cfg.Region = region
+	cfg.Region = getRegion()
 
 	// set a 3-minute timeout for all S3 calls, including downloading the body
 	cfg.HTTPClient = &http.Client{
