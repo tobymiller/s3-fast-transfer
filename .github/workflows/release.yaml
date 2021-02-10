@@ -1,0 +1,57 @@
+on:
+  release:
+    types: [created]
+
+name: Upload Release Asset
+
+jobs:
+  build:
+    name: Upload Release Asset
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@master
+      - uses: actions/setup-go@v1
+        with:
+          go-version: '1.15.8'
+      - run: ./go-build-all
+      - name: Get release
+        id: get_release
+        uses: bruceadams/get-release@v1.2.2
+        env:
+          GITHUB_TOKEN: ${{ github.token }}
+      - id: upload-release-asset1
+        uses: actions/upload-release-asset@v1
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+        with:
+          upload_url: ${{ steps.get_release.outputs.upload_url }}
+          asset_path: ./build/linux-amd64/s3-fast-transfer
+          asset_name: linux-amd64/s3-fast-transfer
+          asset_content_type: application/octet-stream
+      - id: upload-release-asset2
+        uses: actions/upload-release-asset@v1
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+        with:
+          upload_url: ${{ steps.get_release.outputs.upload_url }}
+          asset_path: ./build/linux-arm/s3-fast-transfer
+          asset_name: linux-arm/s3-fast-transfer
+          asset_content_type: application/octet-stream
+      - id: upload-release-asset3
+        uses: actions/upload-release-asset@v1
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+        with:
+          upload_url: ${{ steps.get_release.outputs.upload_url }}
+          asset_path: ./build/windows-amd64/s3-fast-transfer.exe
+          asset_name: windows-amd64/s3-fast-transfer.exe
+          asset_content_type: application/x-msdownload
+      - id: upload-release-asset4
+        uses: actions/upload-release-asset@v1
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+        with:
+          upload_url: ${{ steps.get_release.outputs.upload_url }}
+          asset_path: ./build/darwin-amd64/s3-fast-transfer
+          asset_name: darwin-amd64/s3-fast-transfer
+          asset_content_type: application/octet-stream
