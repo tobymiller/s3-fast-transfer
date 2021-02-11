@@ -150,7 +150,7 @@ func upload(abstractLocation S3AbstractLocation, chunk ChunkRecord, inFile os.Fi
 			},
 			seek: func(offset int64, whence int) (int64, error) {
 				if offset != 0 || whence != 0 {
-					return 0, errors.New("should only seek to beginning")
+					return 0, errors.New(fmt.Sprintf("should only seek to beginning, not offset %d, whence %d", offset, whence))
 				}
 				_, err := inFile.Seek(int64(chunk.start),0)
 				return 0, err
