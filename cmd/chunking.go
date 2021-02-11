@@ -39,7 +39,7 @@ func GetChunksForFile(record FileRecord) []interface{} {
 	records[recordCount-1] = ChunkRecord{
 		start:  start,
 		length: uint32(record.FileSize - start),
-		index: uint32(recordCount),
+		index: uint32(recordCount - 1),
 	}
 	return records
 }

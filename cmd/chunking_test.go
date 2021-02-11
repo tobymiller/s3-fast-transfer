@@ -8,54 +8,60 @@ import (
 func TestGetChunksForFile(t *testing.T) {
 	tests := []struct {
 		input          FileRecord
-		expectedOutput []ChunkRecord
+		expectedOutput []interface{}
 	}{
 		{FileRecord{
 			ChunkSize: 1,
 			FileSize:  1,
-		}, []ChunkRecord{
-			{
+		}, []interface{}{
+			ChunkRecord{
 				start:  0,
 				length: 1,
+				index:  0,
 			},
 		}},
 		{FileRecord{
 			ChunkSize: 2,
 			FileSize:  1,
-		}, []ChunkRecord{
-			{
+		}, []interface{}{
+			ChunkRecord{
 				start:  0,
 				length: 1,
+				index:  0,
 			},
 		}},
 		{FileRecord{
 			ChunkSize: 1,
 			FileSize:  0,
-		}, []ChunkRecord{}},
+		}, []interface{}{}},
 		{FileRecord{
 			ChunkSize: 2,
 			FileSize:  3,
-		}, []ChunkRecord{
-			{
+		}, []interface{}{
+			ChunkRecord{
 				start:  0,
 				length: 2,
+				index:  0,
 			},
-			{
+			ChunkRecord{
 				start:  2,
 				length: 1,
+				index:  1,
 			},
 		}},
 		{FileRecord{
 			ChunkSize: 2,
 			FileSize:  4,
-		}, []ChunkRecord{
-			{
+		}, []interface{}{
+			ChunkRecord{
 				start:  0,
 				length: 2,
+				index:  0,
 			},
-			{
+			ChunkRecord{
 				start:  2,
 				length: 2,
+				index:  1,
 			},
 		}},
 	}
