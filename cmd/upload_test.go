@@ -35,6 +35,11 @@ func TestCalculateChunkSizeForFileAndThreads(t *testing.T) {
 			threadCount:       1,
 			expectedChunkSize: 1024 * 1024 * 128,
 		},
+		{
+			fileSize:          1024 * 1024 * 1024 * 1024 * 8,
+			threadCount:       1,
+			expectedChunkSize: 1024 * 1024 * 1024 * 2,
+		},
 	}
 
 	for _, test := range tests {

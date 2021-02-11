@@ -130,6 +130,7 @@ func upload(abstractLocation S3AbstractLocation, chunk ChunkRecord, inFile os.Fi
 		Bucket: aws.String(location.bucket),
 		Key:    aws.String(location.key),
 		Body:   bytes.NewReader(buf),
+		ContentLength: int64(chunk.length),
 	})
 	return err
 }

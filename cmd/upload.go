@@ -42,14 +42,18 @@ var uploadCmd = &cobra.Command{
 
 func CalculateChunkSizeForFileAndThreads(fileSize uint64, threadCount uint8) uint32 {
 	const m32 = 1024 * 1024 * 32
+	const g2 = 1024 * 1024 * 1024 * 2
 	// It's important that this is a multiple of all the direct io block sizes for different platforms.
 	// Fortunately they're all 4096, but I'm making this a constant so that users can't accidentally set it to something that isn't aligned.
 	idealChunkSize := fileSize / (uint64(threadCount) * 8)
-	toNearest4096 := uint32((idealChunkSize / 4096) * 4096)
-	if toNearest4096 < m32 {
+	toNearest4096 := (idealChunkSize / 4096) * 4096
+	asInt := uint32(toNearest4096)
+	if toNearest4096 > g2 { // 2GB (bigger would cause maxint32 problems)
+		return g2
+	} else if asInt < m32 {
 		return m32
 	} else {
-		return toNearest4096
+		return asInt
 	}
 }
 
