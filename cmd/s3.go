@@ -149,14 +149,22 @@ func upload(abstractLocation S3AbstractLocation, chunk ChunkRecord, inFile os.Fi
 				return n, e
 			},
 			seek: func(offset int64, whence int) (int64, error) {
-				if offset == 0 && whence == 1 {
-					return 0, nil
+				if whence == 2 {
+					if offset == 0 {
+						_, err := inFile.Seek(int64(chunk.start+uint64(chunk.length)), 0)
+						return 0, err
+					}
+				} else if whence == 1 {
+					if offset == 0 {
+						return 0, nil
+					}
+				} else if whence == 0 {
+					if offset == 0 {
+						_, err := inFile.Seek(int64(chunk.start), 0)
+						return 0, err
+					}
 				}
-				if offset != 0 || whence != 0 {
-					return 0, errors.New(fmt.Sprintf("should only seek to beginning, not offset %d, whence %d", offset, whence))
-				}
-				_, err := inFile.Seek(int64(chunk.start),0)
-				return 0, err
+				return 0, errors.New(fmt.Sprintf("should only seek to beginning, not offset %d, whence %d", offset, whence))
 			},
 		},
 	})
