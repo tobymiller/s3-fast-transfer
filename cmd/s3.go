@@ -127,46 +127,50 @@ func (r S3ReaderFunc) Seek(offset int64, whence int) (int64, error) {
 
 func upload(abstractLocation S3AbstractLocation, chunk ChunkRecord, inFile os.File) error {
 	location := abstractLocation.GetChunkLocation(chunk)
-	bytesLeft := chunk.length
-	_, err := inFile.Seek(int64(chunk.start),0)
+	bytesLeft := uint32(0)
+	reader := S3ReaderFunc{
+		read: func(b []byte) (int, error) {
+			bb := b
+			if uint32(len(b)) > bytesLeft {
+				bb = b[:bytesLeft]
+			}
+			n, e := inFile.Read(bb)
+			bytesLeft -= uint32(n)
+			if bytesLeft == 0 {
+				e = io.EOF
+			}
+			return n, e
+		},
+		seek: func(offset int64, whence int) (int64, error) {
+			if whence == 2 {
+				if offset == 0 {
+					_, err := inFile.Seek(int64(chunk.start+uint64(chunk.length)), 0)
+					bytesLeft = 0
+					return int64(chunk.length), err
+				}
+			} else if whence == 1 {
+				if offset == 0 {
+					n, err := inFile.Seek(0, 1)
+					return n - int64(chunk.start), err
+				}
+			} else if whence == 0 {
+				if offset == 0 {
+					_, err := inFile.Seek(int64(chunk.start), 0)
+					bytesLeft = chunk.length
+					return 0, err
+				}
+			}
+			return 0, errors.New(fmt.Sprintf("should only seek to beginning, not offset %d, whence %d", offset, whence))
+		},
+	}
+	_, err := reader.Seek(0,0)
 	if err != nil {
 		return err
 	}
 	_, err = s3Client.PutObject(s3Context, &s3.PutObjectInput{
 		Bucket: aws.String(location.bucket),
 		Key:    aws.String(location.key),
-		Body:   S3ReaderFunc{
-			read: func(b []byte) (int, error) {
-				bb := b
-				if uint32(len(b)) > bytesLeft {
-					bb = b[:bytesLeft]
-				}
-				n, e := inFile.Read(bb)
-				bytesLeft -= uint32(n)
-				if bytesLeft == 0 {
-					e = io.EOF
-				}
-				return n, e
-			},
-			seek: func(offset int64, whence int) (int64, error) {
-				if whence == 2 {
-					if offset == 0 {
-						_, err := inFile.Seek(int64(chunk.start+uint64(chunk.length)), 0)
-						return 0, err
-					}
-				} else if whence == 1 {
-					if offset == 0 {
-						return 0, nil
-					}
-				} else if whence == 0 {
-					if offset == 0 {
-						_, err := inFile.Seek(int64(chunk.start), 0)
-						return 0, err
-					}
-				}
-				return 0, errors.New(fmt.Sprintf("should only seek to beginning, not offset %d, whence %d", offset, whence))
-			},
-		},
+		Body:   reader,
 	})
 	return err
 }
