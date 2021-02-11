@@ -126,7 +126,7 @@ func upload(abstractLocation S3AbstractLocation, chunk ChunkRecord, inFile os.Fi
 	if err != nil {
 		return err
 	}
-	buf := make([]byte, 4096)
+	buf := make([]byte, 4 * 1024 * 1024)
 	bytesLeft := chunk.length
 	for {
 		buf2 := buf
