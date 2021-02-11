@@ -3,8 +3,7 @@ package cmd
 import (
 	"bytes"
 	"context"
-	"crypto/md5"
-	"encoding/hex"
+	"errors"
 	"fmt"
 	"github.com/aws/aws-sdk-go-v2/aws"
 	"github.com/aws/aws-sdk-go-v2/config"
@@ -113,62 +112,50 @@ func download(abstractLocation S3AbstractLocation, chunk ChunkRecord, outFile os
 	return nil
 }
 
-type S3ReaderFunc func([]byte) (int, error)
+type S3ReaderFunc struct {
+	read func([]byte) (int, error)
+	seek func(offset int64, whence int) (int64, error)
+}
 
 func (r S3ReaderFunc) Read(b []byte) (int, error) {
-	return r(b)
+	return r.read(b)
+}
+
+func (r S3ReaderFunc) Seek(offset int64, whence int) (int64, error) {
+	return r.seek(offset, whence)
 }
 
 func upload(abstractLocation S3AbstractLocation, chunk ChunkRecord, inFile os.File) error {
 	location := abstractLocation.GetChunkLocation(chunk)
-	hash := md5.New()
-	_, err := inFile.Seek(int64(chunk.start),0)
-	if err != nil {
-		return err
-	}
-	buf := make([]byte, 4 * 1024 * 1024)
 	bytesLeft := chunk.length
-	for {
-		buf2 := buf
-		if uint32(len(buf)) > bytesLeft {
-			buf2 = buf[:bytesLeft]
-		}
-		n, err := inFile.Read(buf2)
-		_, err2 := hash.Write(buf2[:n])
-		bytesLeft -= uint32(n)
-		if err == io.EOF || err == io.ErrUnexpectedEOF || bytesLeft <= 0 {
-			break
-		}
-		if err != nil {
-			return err
-		}
-		if err2 != nil {
-			return err2
-		}
-	}
-	md5sum := hex.EncodeToString(hash.Sum(nil))
-	bytesLeft = chunk.length
-	_, err = inFile.Seek(int64(chunk.start),0)
+	_, err := inFile.Seek(int64(chunk.start),0)
 	if err != nil {
 		return err
 	}
 	_, err = s3Client.PutObject(s3Context, &s3.PutObjectInput{
 		Bucket: aws.String(location.bucket),
 		Key:    aws.String(location.key),
-		Body:   S3ReaderFunc(func(b []byte) (int, error) {
-			bb := b
-			if uint32(len(b)) > bytesLeft {
-				bb = b[:bytesLeft]
-			}
-			n, e := inFile.Read(bb)
-			bytesLeft -= uint32(n)
-			if bytesLeft == 0 {
-				e = io.EOF
-			}
-			return n, e
-		}),
-		ContentLength: int64(chunk.length),
-		ContentMD5: &md5sum,
+		Body:   S3ReaderFunc{
+			read: func(b []byte) (int, error) {
+				bb := b
+				if uint32(len(b)) > bytesLeft {
+					bb = b[:bytesLeft]
+				}
+				n, e := inFile.Read(bb)
+				bytesLeft -= uint32(n)
+				if bytesLeft == 0 {
+					e = io.EOF
+				}
+				return n, e
+			},
+			seek: func(offset int64, whence int) (int64, error) {
+				if offset != 0 || whence != 0 {
+					return 0, errors.New("should only seek to beginning")
+				}
+				_, err := inFile.Seek(int64(chunk.start),0)
+				return 0, err
+			},
+		},
 	})
 	return err
 }
