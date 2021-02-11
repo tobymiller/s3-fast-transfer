@@ -1,6 +1,9 @@
 package cmd
 
-import "os"
+import (
+	"io"
+	"os"
+)
 
 type FileRecord struct {
 	ChunkSize uint32
@@ -14,11 +17,11 @@ type ChunkRecord struct {
 }
 
 func GetFileSizeForPath(path string) (uint64, error) {
-	stat, err := os.Stat(path)
+	file, err := os.Open(path)
 	if err != nil {
 		return 0, err
 	}
-	length := stat.Size()
+	length, err := file.Seek(0, io.SeekEnd)
 	return uint64(length), nil
 }
 
