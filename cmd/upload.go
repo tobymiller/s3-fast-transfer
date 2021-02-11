@@ -12,10 +12,6 @@ var uploadInput string
 var uploadKey string
 var s3Abstract S3AbstractLocation
 
-// It's important that this is a multiple of all the direct io block sizes for different platforms.
-// Fortunately they're all 4096, but I'm making this a constant so that users can't accidentally set it to something that isn't aligned.
-var chunkSize uint32 = 32 * 1024 * 1024
-
 var uploadCmd = &cobra.Command{
 	Use:   "upload",
 	Short: "Upload a local file to S3",
@@ -25,9 +21,14 @@ var uploadCmd = &cobra.Command{
 			bucket:     bucket,
 			filePrefix: uploadKey,
 		}
-		record, err := GetFileRecordForPath(uploadInput, chunkSize)
+		length, err := GetFileSizeForPath(uploadInput)
 		if err != nil {
 			panic(err)
+		}
+		chunkSize := CalculateChunkSizeForFileAndThreads(length, threadCount)
+		record := FileRecord{
+			ChunkSize: chunkSize,
+			FileSize:  length,
 		}
 		recordJson, err := json2.Marshal(record)
 		if err != nil {
@@ -37,6 +38,19 @@ var uploadCmd = &cobra.Command{
 		RunThreads(uploadPart, chunks, uploadOpenFile, int(threadCount))
 		uploadJson(s3Abstract, recordJson)
 	},
+}
+
+func CalculateChunkSizeForFileAndThreads(fileSize uint64, threadCount uint8) uint32 {
+	const m32 = 1024 * 1024 * 32
+	// It's important that this is a multiple of all the direct io block sizes for different platforms.
+	// Fortunately they're all 4096, but I'm making this a constant so that users can't accidentally set it to something that isn't aligned.
+	idealChunkSize := fileSize / (uint64(threadCount) * 8)
+	toNearest4096 := uint32((idealChunkSize / 4096) * 4096)
+	if toNearest4096 < m32 {
+		return m32
+	} else {
+		return toNearest4096
+	}
 }
 
 func uploadPart(chunk interface{}, file interface{}) (interface{}, error) {

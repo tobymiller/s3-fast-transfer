@@ -13,16 +13,13 @@ type ChunkRecord struct {
 	index uint32
 }
 
-func GetFileRecordForPath(path string, chunkSize uint32) (FileRecord, error) {
+func GetFileSizeForPath(path string) (uint64, error) {
 	stat, err := os.Stat(path)
 	if err != nil {
-		return FileRecord{}, err
+		return 0, err
 	}
 	length := stat.Size()
-	return FileRecord{
-		ChunkSize: chunkSize,
-		FileSize:  uint64(length),
-	}, nil
+	return uint64(length), nil
 }
 
 func GetChunksForFile(record FileRecord) []interface{} {
