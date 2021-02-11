@@ -14,6 +14,7 @@ var downloadInput string
 var downloadKey string
 
 var fileSize uint64
+var threadCount uint8
 
 var downloadCmd = &cobra.Command{
 	Use:   "download",
@@ -80,4 +81,5 @@ func init() {
 	rootCmd.AddCommand(downloadCmd)
 	downloadCmd.Flags().StringVar(&downloadInput, "output", "", "Output file path")
 	downloadCmd.Flags().StringVar(&downloadKey, "key", "", "S3 Key")
+	downloadCmd.PersistentFlags().Uint8Var(&threadCount, "threadCount", 8, "Number of parallel streams to S3")
 }

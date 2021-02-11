@@ -12,6 +12,9 @@ var uploadInput string
 var uploadKey string
 var s3Abstract S3AbstractLocation
 
+var uploadThreadCount uint8
+var uploadTargetThreadCount uint8
+
 var uploadCmd = &cobra.Command{
 	Use:   "upload",
 	Short: "Upload a local file to S3",
@@ -25,7 +28,7 @@ var uploadCmd = &cobra.Command{
 		if err != nil {
 			panic(err)
 		}
-		chunkSize := CalculateChunkSizeForFileAndThreads(length, threadCount)
+		chunkSize := CalculateChunkSizeForFileAndThreads(length, uploadTargetThreadCount)
 		record := FileRecord{
 			ChunkSize: chunkSize,
 			FileSize:  length,
@@ -35,7 +38,7 @@ var uploadCmd = &cobra.Command{
 			panic(err)
 		}
 		chunks := GetChunksForFile(record)
-		RunThreads(uploadPart, chunks, uploadOpenFile, int(threadCount))
+		RunThreads(uploadPart, chunks, uploadOpenFile, int(uploadThreadCount))
 		uploadJson(s3Abstract, recordJson)
 	},
 }
@@ -71,4 +74,6 @@ func init() {
 	rootCmd.AddCommand(uploadCmd)
 	uploadCmd.Flags().StringVar(&uploadInput, "input", "", "Input file path")
 	uploadCmd.Flags().StringVar(&uploadKey, "key", "", "S3 Key")
+	uploadCmd.PersistentFlags().Uint8Var(&uploadThreadCount, "threadCount", 8, "Number of parallel streams to S3")
+	uploadCmd.PersistentFlags().Uint8Var(&uploadTargetThreadCount, "targetThreadCount", 8, "Number of parallel streams to S3 to aim for for later download")
 }

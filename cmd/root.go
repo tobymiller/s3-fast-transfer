@@ -7,7 +7,6 @@ import (
 )
 
 var bucket string
-var threadCount uint8
 
 var rootCmd = &cobra.Command{
 	Use:   "s3-fast-transfer",
@@ -23,5 +22,4 @@ func Execute() {
 
 func init() {
 	rootCmd.PersistentFlags().StringVar(&bucket, "bucket", "", "S3 bucket")
-	rootCmd.PersistentFlags().Uint8Var(&threadCount, "threadCount", 8, "Number of parallel streams to S3")
 }
