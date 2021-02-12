@@ -36,21 +36,20 @@ var downloadCmd = &cobra.Command{
 		}
 		chunks := GetChunksForFile(record)
 		RunThreads(downloadPart, chunks, downloadOpenFile, int(threadCount))
-		err = os.Truncate(downloadInput, int64(record.FileSize))
-		// Ignore error, which happens when the file isn't a regular file.
-		// We may have written past the end, to the nearest aligned block, but there's nothing we can do to fix that.
 	},
 }
 
 type FileAndBuffer struct  {
 	file *os.File
 	buffer []byte
+	direct bool
 }
 
 func downloadPart(chunk interface{}, fileAndBuffer interface{}) (interface{}, error) {
 	file := fileAndBuffer.(FileAndBuffer).file
 	buffer := fileAndBuffer.(FileAndBuffer).buffer
-	err := download(s3Abstract, chunk.(ChunkRecord), *file, buffer)
+	directIo := fileAndBuffer.(FileAndBuffer).direct
+	err := download(s3Abstract, chunk.(ChunkRecord), *file, buffer, directIo)
 	return 0, err
 }
 
@@ -81,6 +80,7 @@ func downloadOpenFile() (interface{}, error, func() error) {
 	return FileAndBuffer{
 		file,
 		block,
+		directBlock,
 	}, err, file.Close
 }
 

@@ -81,7 +81,7 @@ func setupS3Client() {
 	s3Client = s3.NewFromConfig(cfg)
 }
 
-func download(abstractLocation S3AbstractLocation, chunk ChunkRecord, outFile os.File, buf []byte) error {
+func download(abstractLocation S3AbstractLocation, chunk ChunkRecord, outFile os.File, buf []byte, directIo bool) error {
 	for {
 		location := abstractLocation.GetChunkLocation(chunk)
 		resp, err := s3Client.GetObject(s3Context, &s3.GetObjectInput{
@@ -100,7 +100,12 @@ func download(abstractLocation S3AbstractLocation, chunk ChunkRecord, outFile os
 		md5Builder := md5.New()
 		for {
 			n, err := io.ReadFull(resp.Body, buf)
-			_, err2 := outFile.Write(buf)
+			var err2 error
+			if directIo {
+				_, err2 = outFile.Write(buf)
+			} else {
+				_, err2 = outFile.Write(buf[:n])
+			}
 			md5Builder.Write(buf[:n])
 			total += n
 			if err == io.EOF || err == io.ErrUnexpectedEOF || uint32(total) >= chunk.length {
