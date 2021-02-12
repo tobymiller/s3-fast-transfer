@@ -3,6 +3,7 @@ package cmd
 import (
 	"bytes"
 	"context"
+	"crypto/md5"
 	"errors"
 	"fmt"
 	"github.com/aws/aws-sdk-go-v2/aws"
@@ -81,34 +82,45 @@ func setupS3Client() {
 }
 
 func download(abstractLocation S3AbstractLocation, chunk ChunkRecord, outFile os.File, buf []byte) error {
-	location := abstractLocation.GetChunkLocation(chunk)
-	resp, err := s3Client.GetObject(s3Context, &s3.GetObjectInput{
-		Bucket: aws.String(location.bucket),
-		Key:    aws.String(location.key),
-	})
-	if err != nil {
-		return err
-	}
-	_, err = outFile.Seek(int64(chunk.start),0)
-	if err != nil {
-		return err
-	}
-	total := 0
 	for {
-		n, err := io.ReadFull(resp.Body, buf)
-		_, err2 := outFile.Write(buf)
-		total += n
-		if err == io.EOF || err == io.ErrUnexpectedEOF || uint32(total) >= chunk.length {
-			break
-		}
+		location := abstractLocation.GetChunkLocation(chunk)
+		resp, err := s3Client.GetObject(s3Context, &s3.GetObjectInput{
+			Bucket: aws.String(location.bucket),
+			Key:    aws.String(location.key),
+		})
 		if err != nil {
 			return err
 		}
-		if err2 != nil {
-			return err2
+		_, err = outFile.Seek(int64(chunk.start), 0)
+		if err != nil {
+			return err
+		}
+		total := 0
+		expectedMd5 := *resp.ETag
+		md5Builder := md5.New()
+		for {
+			n, err := io.ReadFull(resp.Body, buf)
+			_, err2 := outFile.Write(buf)
+			md5Builder.Sum(buf[:n])
+			total += n
+			if err == io.EOF || err == io.ErrUnexpectedEOF || uint32(total) >= chunk.length {
+				break
+			}
+			if err != nil {
+				return err
+			}
+			if err2 != nil {
+				return err2
+			}
+		}
+		_ = resp.Body.Close()
+		actualMd5 := fmt.Sprintf("%x", md5.Sum(md5Builder.Sum(nil)))
+		if expectedMd5 != actualMd5 {
+			println("Md5 for block didn't match - will retry")
+		} else {
+			break
 		}
 	}
-	_ = resp.Body.Close()
 	return nil
 }
 
