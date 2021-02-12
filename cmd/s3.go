@@ -101,7 +101,7 @@ func download(abstractLocation S3AbstractLocation, chunk ChunkRecord, outFile os
 		for {
 			n, err := io.ReadFull(resp.Body, buf)
 			_, err2 := outFile.Write(buf)
-			md5Builder.Sum(buf[:n])
+			md5Builder.Write(buf[:n])
 			total += n
 			if err == io.EOF || err == io.ErrUnexpectedEOF || uint32(total) >= chunk.length {
 				break
@@ -114,7 +114,7 @@ func download(abstractLocation S3AbstractLocation, chunk ChunkRecord, outFile os
 			}
 		}
 		_ = resp.Body.Close()
-		actualMd5 := fmt.Sprintf("%x", md5.Sum(md5Builder.Sum(nil)))
+		actualMd5 := fmt.Sprintf("\"%x\"", md5.Sum(md5Builder.Sum(nil)))
 		if expectedMd5 != actualMd5 {
 			println(fmt.Sprintf("Md5 for block didn't match - will retry. Expected: %s, actual %s.", expectedMd5, actualMd5))
 		} else {
