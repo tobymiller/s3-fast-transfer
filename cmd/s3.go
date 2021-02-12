@@ -116,7 +116,7 @@ func download(abstractLocation S3AbstractLocation, chunk ChunkRecord, outFile os
 		_ = resp.Body.Close()
 		actualMd5 := fmt.Sprintf("%x", md5.Sum(md5Builder.Sum(nil)))
 		if expectedMd5 != actualMd5 {
-			println("Md5 for block didn't match - will retry")
+			println(fmt.Sprintf("Md5 for block didn't match - will retry. Expected: %s, actual %s.", expectedMd5, actualMd5))
 		} else {
 			break
 		}
