@@ -57,6 +57,7 @@ func downloadPart(chunk interface{}, fileAndBuffer interface{}) (interface{}, er
 func downloadOpenFile() (interface{}, error, func() error) {
 	stat, err := os.Stat(downloadInput)
 	var file *os.File
+	directBlock := false
 	if os.IsNotExist(err) {
 		file, err = os.OpenFile(downloadInput, syscall.O_WRONLY|syscall.O_CREAT, 0666)
 	} else if err != nil {
@@ -64,13 +65,19 @@ func downloadOpenFile() (interface{}, error, func() error) {
 	} else {
 		if stat.Mode().IsDir() {
 			return nil, errors.New("output is directory"), nil
-		} else if stat.Mode().IsRegular() {
+		} else if stat.Mode().IsRegular() || noDirectIo {
 			file, err = os.OpenFile(downloadInput, syscall.O_WRONLY|syscall.O_TRUNC, 0666)
 		} else { // assume it's a block device for now
 			file, err = directio.OpenFile(downloadInput, syscall.O_WRONLY|syscall.O_SYNC, 0666)
+			directBlock = true
 		}
 	}
-	block := directio.AlignedBlock(directio.BlockSize)
+	var block []byte
+	if directBlock {
+		block = directio.AlignedBlock(directio.BlockSize)
+	} else {
+		block = make([]byte, blockSize)
+	}
 	return FileAndBuffer{
 		file,
 		block,
