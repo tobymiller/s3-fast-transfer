@@ -58,6 +58,7 @@ func downloadOpenFile() (interface{}, error, func() error) {
 	var file *os.File
 	directBlock := false
 	if os.IsNotExist(err) {
+		println("Starting thread using regular io")
 		file, err = os.OpenFile(downloadInput, syscall.O_WRONLY|syscall.O_CREAT, 0666)
 	} else if err != nil {
 		return nil, err, nil
@@ -65,8 +66,10 @@ func downloadOpenFile() (interface{}, error, func() error) {
 		if stat.Mode().IsDir() {
 			return nil, errors.New("output is directory"), nil
 		} else if stat.Mode().IsRegular() || noDirectIo {
+			println("Starting thread using regular io")
 			file, err = os.OpenFile(downloadInput, syscall.O_WRONLY|syscall.O_TRUNC, 0666)
 		} else { // assume it's a block device for now
+			println("Starting thread using direct io")
 			file, err = directio.OpenFile(downloadInput, syscall.O_WRONLY|syscall.O_SYNC, 0666)
 			directBlock = true
 		}
