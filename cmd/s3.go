@@ -81,7 +81,7 @@ func setupS3Client() {
 	s3Client = s3.NewFromConfig(cfg)
 }
 
-func download(abstractLocation S3AbstractLocation, chunk ChunkRecord, outFile os.File, buf []byte, directIo bool) error {
+func download(abstractLocation S3AbstractLocation, chunk ChunkRecord, outFile os.File, buf []byte, directIo bool, drop bool) error {
 	for {
 		location := abstractLocation.GetChunkLocation(chunk)
 		resp, err := s3Client.GetObject(s3Context, &s3.GetObjectInput{
@@ -91,9 +91,11 @@ func download(abstractLocation S3AbstractLocation, chunk ChunkRecord, outFile os
 		if err != nil {
 			return err
 		}
-		_, err = outFile.Seek(int64(chunk.start), 0)
-		if err != nil {
-			return err
+		if !drop {
+			_, err = outFile.Seek(int64(chunk.start), 0)
+			if err != nil {
+				return err
+			}
 		}
 		total := 0
 		expectedMd5 := *resp.ETag
@@ -101,12 +103,14 @@ func download(abstractLocation S3AbstractLocation, chunk ChunkRecord, outFile os
 		for {
 			n, err := io.ReadFull(resp.Body, buf)
 			var err2 error
-			if directIo {
-				_, err2 = outFile.Write(buf)
-			} else {
-				_, err2 = outFile.Write(buf[:n])
+			if !drop {
+				if directIo {
+					_, err2 = outFile.Write(buf)
+				} else {
+					_, err2 = outFile.Write(buf[:n])
+				}
+				md5Builder.Write(buf[:n])
 			}
-			md5Builder.Write(buf[:n])
 			total += n
 			if err == io.EOF || err == io.ErrUnexpectedEOF || uint32(total) >= chunk.length {
 				break
@@ -119,9 +123,13 @@ func download(abstractLocation S3AbstractLocation, chunk ChunkRecord, outFile os
 			}
 		}
 		_ = resp.Body.Close()
-		actualMd5 := fmt.Sprintf("\"%x\"", md5Builder.Sum(nil))
-		if expectedMd5 != actualMd5 {
-			println(fmt.Sprintf("Md5 for block didn't match - will retry. Expected: %s, actual %s, index %d", expectedMd5, actualMd5, chunk.index))
+		if !drop {
+			actualMd5 := fmt.Sprintf("\"%x\"", md5Builder.Sum(nil))
+			if expectedMd5 != actualMd5 {
+				println(fmt.Sprintf("Md5 for block didn't match - will retry. Expected: %s, actual %s, index %d", expectedMd5, actualMd5, chunk.index))
+			} else {
+				break
+			}
 		} else {
 			break
 		}

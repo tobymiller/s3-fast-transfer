@@ -3,9 +3,11 @@ package cmd
 import (
 	json2 "encoding/json"
 	"errors"
+	"fmt"
 	"github.com/ncw/directio"
 	"os"
 	"syscall"
+	"time"
 
 	"github.com/spf13/cobra"
 )
@@ -15,6 +17,7 @@ var downloadKey string
 
 var fileSize uint64
 var threadCount uint8
+var drop bool
 
 var downloadCmd = &cobra.Command{
 	Use:   "download",
@@ -35,7 +38,12 @@ var downloadCmd = &cobra.Command{
 			panic(err)
 		}
 		chunks := GetChunksForFile(record)
+		start := time.Now()
 		RunThreads(downloadPart, chunks, downloadOpenFile, int(threadCount))
+		timeTotal := time.Since(start)
+		speed := float64(record.FileSize) / timeTotal.Seconds()
+		fmt.Printf("Download completed in %d ms\n", timeTotal.Milliseconds())
+		fmt.Printf("Bytes per second: %d\n", int64(speed))
 	},
 }
 
@@ -49,16 +57,18 @@ func downloadPart(chunk interface{}, fileAndBuffer interface{}) (interface{}, er
 	file := fileAndBuffer.(FileAndBuffer).file
 	buffer := fileAndBuffer.(FileAndBuffer).buffer
 	directIo := fileAndBuffer.(FileAndBuffer).direct
-	err := download(s3Abstract, chunk.(ChunkRecord), *file, buffer, directIo)
+	err := download(s3Abstract, chunk.(ChunkRecord), *file, buffer, directIo, drop)
 	return 0, err
 }
 
 func downloadOpenFile() (interface{}, error, func() error) {
+	if drop {
+		return nil, nil, func() error { return nil }
+	}
 	stat, err := os.Stat(downloadInput)
 	var file *os.File
 	directBlock := false
 	if os.IsNotExist(err) {
-		println("Starting thread using regular io")
 		file, err = os.OpenFile(downloadInput, syscall.O_WRONLY|syscall.O_CREAT, 0666)
 	} else if err != nil {
 		return nil, err, nil
@@ -66,10 +76,8 @@ func downloadOpenFile() (interface{}, error, func() error) {
 		if stat.Mode().IsDir() {
 			return nil, errors.New("output is directory"), nil
 		} else if stat.Mode().IsRegular() || noDirectIo {
-			println("Starting thread using regular io")
 			file, err = os.OpenFile(downloadInput, syscall.O_WRONLY|syscall.O_TRUNC, 0666)
 		} else { // assume it's a block device for now
-			println("Starting thread using direct io")
 			file, err = directio.OpenFile(downloadInput, syscall.O_WRONLY|syscall.O_SYNC, 0666)
 			directBlock = true
 		}
@@ -91,5 +99,6 @@ func init() {
 	rootCmd.AddCommand(downloadCmd)
 	downloadCmd.Flags().StringVar(&downloadInput, "output", "", "Output file path")
 	downloadCmd.Flags().StringVar(&downloadKey, "key", "", "S3 Key")
+	downloadCmd.Flags().BoolVar(&drop, "drop", false, "Drop all data once downloaded - used for testing network speed in isolation")
 	downloadCmd.PersistentFlags().Uint8Var(&threadCount, "threadCount", 8, "Number of parallel streams to S3")
 }
