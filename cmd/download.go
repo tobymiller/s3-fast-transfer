@@ -57,7 +57,7 @@ func downloadPart(chunk interface{}, fileAndBuffer interface{}) (interface{}, er
 	file := fileAndBuffer.(FileAndBuffer).file
 	buffer := fileAndBuffer.(FileAndBuffer).buffer
 	directIo := fileAndBuffer.(FileAndBuffer).direct
-	err := download(s3Abstract, chunk.(ChunkRecord), *file, buffer, directIo, drop)
+	err := download(s3Abstract, chunk.(ChunkRecord), file, buffer, directIo, drop)
 	return 0, err
 }
 

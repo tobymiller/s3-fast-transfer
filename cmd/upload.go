@@ -61,7 +61,7 @@ func CalculateChunkSizeForFileAndThreads(fileSize uint64, threadCount uint8) uin
 }
 
 func uploadPart(chunk interface{}, file interface{}) (interface{}, error) {
-	err := upload(s3Abstract, chunk.(ChunkRecord), *file.(*os.File))
+	err := upload(s3Abstract, chunk.(ChunkRecord), file.(*os.File))
 	return 0, err
 }
 

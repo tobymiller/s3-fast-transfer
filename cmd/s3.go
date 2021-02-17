@@ -81,7 +81,7 @@ func setupS3Client() {
 	s3Client = s3.NewFromConfig(cfg)
 }
 
-func download(abstractLocation S3AbstractLocation, chunk ChunkRecord, outFile os.File, buf []byte, directIo bool, drop bool) error {
+func download(abstractLocation S3AbstractLocation, chunk ChunkRecord, outFile *os.File, buf []byte, directIo bool, drop bool) error {
 	for {
 		location := abstractLocation.GetChunkLocation(chunk)
 		resp, err := s3Client.GetObject(s3Context, &s3.GetObjectInput{
@@ -150,7 +150,7 @@ func (r S3ReaderFunc) Seek(offset int64, whence int) (int64, error) {
 	return r.seek(offset, whence)
 }
 
-func upload(abstractLocation S3AbstractLocation, chunk ChunkRecord, inFile os.File) error {
+func upload(abstractLocation S3AbstractLocation, chunk ChunkRecord, inFile *os.File) error {
 	location := abstractLocation.GetChunkLocation(chunk)
 	bytesLeft := uint32(0)
 	reader := S3ReaderFunc{
