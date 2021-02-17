@@ -63,7 +63,11 @@ func downloadPart(chunk interface{}, fileAndBuffer interface{}) (interface{}, er
 
 func downloadOpenFile() (interface{}, error, func() error) {
 	if drop {
-		return nil, nil, func() error { return nil }
+		return FileAndBuffer{
+			file:   nil,
+			buffer: nil,
+			direct: false,
+		}, nil, func() error { return nil }
 	}
 	stat, err := os.Stat(downloadInput)
 	var file *os.File
