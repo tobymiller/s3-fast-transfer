@@ -65,7 +65,7 @@ func downloadOpenFile() (interface{}, error, func() error) {
 	if drop {
 		return FileAndBuffer{
 			file:   nil,
-			buffer: nil,
+			buffer: make([]byte, blockSize),
 			direct: false,
 		}, nil, func() error { return nil }
 	}
