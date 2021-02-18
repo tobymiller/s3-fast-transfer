@@ -63,7 +63,7 @@ func UpdateNumberOfDirFiles(chunks []interface{}) {
 		numberOfChunks = (numberOfChunks+1) / 2
 	}
 	numberOfDirFiles = uint8(numberOfChunks)
-	chunksPerFile = uint64(numberOfChunks) / uint64(numberOfDirFiles)
+	chunksPerFile = uint64(len(chunks)) / uint64(numberOfDirFiles)
 	chunkMod = uint64(maxChunkSize) * chunksPerFile
 
 }
