@@ -66,7 +66,7 @@ func UpdateNumberOfDirFiles(chunks []interface{}) {
 		numberOfChunks = (numberOfChunks+1) / 2
 	}
 	numberOfDirFiles = uint8(numberOfChunks)
-	chunksPerFile = uint64(len(chunks)) / uint64(numberOfDirFiles)
+	chunksPerFile = (uint64(len(chunks)) + uint64(numberOfDirFiles) - 1) / uint64(numberOfDirFiles)
 	chunkMod = uint64(maxChunkSize) * chunksPerFile
 
 }
@@ -191,5 +191,5 @@ func init() {
 	downloadCmd.Flags().BoolVar(&drop, "drop", false, "Drop all data once downloaded - used for testing network speed in isolation")
 	downloadCmd.Flags().BoolVar(&dir, "dir", false, "Download as collection of files")
 	downloadCmd.PersistentFlags().Uint8Var(&threadCount, "threadCount", 8, "Number of parallel streams to S3")
-	downloadCmd.PersistentFlags().Uint8Var(&numberOfDirFiles, "numberOfDirFiled", 8, "Number of files to use in directory mode")
+	downloadCmd.PersistentFlags().Uint8Var(&numberOfDirFiles, "numberOfDirFiles", 8, "Number of files to use in directory mode")
 }
