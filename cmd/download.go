@@ -4,6 +4,7 @@ import (
 	json2 "encoding/json"
 	"fmt"
 	"github.com/ncw/directio"
+	"math/rand"
 	"os"
 	"syscall"
 	"time"
@@ -43,6 +44,8 @@ var downloadCmd = &cobra.Command{
 		}
 		chunks := GetChunksForFile(fileRecord)
 		UpdateNumberOfDirFiles(chunks)
+		rand.Seed(time.Now().UnixNano())
+		rand.Shuffle(len(chunks), func(i, j int) { chunks[i], chunks[j] = chunks[j], chunks[i] })
 		start := time.Now()
 		RunThreads(downloadPart, chunks, downloadOpenFile, int(threadCount))
 		timeTotal := time.Since(start)
