@@ -171,7 +171,7 @@ func downloadOpenFile() (interface{}, error, func() error) {
 		},
 		block,
 		method == blockDevice,
-	}, err, func () error {
+	}, nil, func () error {
 		for _, file := range files {
 			if file != nil {
 				err := file.Close()
