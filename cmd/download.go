@@ -118,10 +118,8 @@ func downloadOpenFile() (interface{}, error, func() error) {
 		}
 	}
 	if method == directory {
-		err = os.Mkdir(downloadInput, 0644)
-		if err != nil {
-			return nil, err, func() error { return nil }
-		}
+		_ = os.Mkdir(downloadInput, 0644)
+		// error will just be directory existing, which is fine
 	} else if method == regular {
 		_ = os.Truncate(downloadInput, 0)
 		// error will just be if it doesn't exist, which is fine
