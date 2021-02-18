@@ -2,7 +2,6 @@ package cmd
 
 import (
 	json2 "encoding/json"
-	"errors"
 	"fmt"
 	"github.com/ncw/directio"
 	"os"
@@ -17,7 +16,12 @@ var downloadKey string
 
 var fileSize uint64
 var threadCount uint8
+var numberOfDirFiles uint8
 var drop bool
+var dir bool
+
+var fileRecord FileRecord
+var chunkMod uint64
 
 var downloadCmd = &cobra.Command{
 	Use:   "download",
@@ -32,71 +36,148 @@ var downloadCmd = &cobra.Command{
 		if err != nil {
 			panic(err)
 		}
-		var record FileRecord
-		err = json2.Unmarshal(json, &record)
+		err = json2.Unmarshal(json, &fileRecord)
 		if err != nil {
 			panic(err)
 		}
-		chunks := GetChunksForFile(record)
+		chunks := GetChunksForFile(fileRecord)
+		UpdateNumberOfDirFiles(chunks)
 		start := time.Now()
 		RunThreads(downloadPart, chunks, downloadOpenFile, int(threadCount))
 		timeTotal := time.Since(start)
-		speed := float64(record.FileSize) / timeTotal.Seconds()
+		speed := float64(fileRecord.FileSize) / timeTotal.Seconds()
 		fmt.Printf("Download completed in %d ms\n", timeTotal.Milliseconds())
 		fmt.Printf("Bytes per second: %d\n", int64(speed))
 	},
 }
 
-type FileAndBuffer struct  {
-	file *os.File
+func UpdateNumberOfDirFiles(chunks []interface{}) {
+	numberOfChunks := len(chunks)
+	if numberOfChunks == 0 {
+		numberOfDirFiles = 0
+		chunkMod = 1
+	}
+	maxChunkSize := chunks[0].(ChunkRecord).length
+	for numberOfChunks > int(numberOfDirFiles) {
+		numberOfChunks = (numberOfChunks+1) / 2
+	}
+	numberOfDirFiles = uint8(numberOfChunks)
+	chunkMod = uint64(maxChunkSize) * (uint64(numberOfChunks) / uint64(numberOfDirFiles))
+}
+
+type FilesAndBuffer struct  {
+	file func(chunk ChunkRecord) (*os.File, ChunkRecord, error)
 	buffer []byte
 	direct bool
 }
 
 func downloadPart(chunk interface{}, fileAndBuffer interface{}) (interface{}, error) {
-	file := fileAndBuffer.(FileAndBuffer).file
-	buffer := fileAndBuffer.(FileAndBuffer).buffer
-	directIo := fileAndBuffer.(FileAndBuffer).direct
-	err := download(s3Abstract, chunk.(ChunkRecord), file, buffer, directIo, drop)
+	file := fileAndBuffer.(FilesAndBuffer).file
+	buffer := fileAndBuffer.(FilesAndBuffer).buffer
+	directIo := fileAndBuffer.(FilesAndBuffer).direct
+	f, newChunk, err := file(chunk.(ChunkRecord))
+	if err != nil {
+		return 0, err
+	}
+	err = download(s3Abstract, newChunk, f, buffer, directIo, drop)
 	return 0, err
 }
 
+type Method int
+const (
+	regular Method = iota
+	blockDevice
+	directory
+)
+
 func downloadOpenFile() (interface{}, error, func() error) {
 	if drop {
-		return FileAndBuffer{
-			file:   nil,
+		return FilesAndBuffer{
+			file:   func(chunk ChunkRecord) (*os.File, ChunkRecord, error) { return nil, chunk, nil },
 			buffer: make([]byte, blockSize),
 			direct: false,
 		}, nil, func() error { return nil }
 	}
 	stat, err := os.Stat(downloadInput)
-	var file *os.File
-	directBlock := false
+	var method Method
 	if os.IsNotExist(err) {
-		file, err = os.OpenFile(downloadInput, syscall.O_WRONLY|syscall.O_CREAT, 0666)
+		if dir {
+			method = directory
+		} else {
+			method = regular
+		}
 	} else if err != nil {
-		return nil, err, nil
+		return nil, err, func() error { return nil }
 	} else {
 		if stat.Mode().IsDir() {
-			return nil, errors.New("output is directory"), nil
+			method = directory
 		} else if stat.Mode().IsRegular() || noDirectIo {
-			file, err = os.OpenFile(downloadInput, syscall.O_WRONLY|syscall.O_TRUNC, 0666)
+			method = regular
 		} else { // assume it's a block device for now
-			file, err = directio.OpenFile(downloadInput, syscall.O_WRONLY|syscall.O_SYNC, 0666)
-			directBlock = true
+			method = blockDevice
 		}
 	}
+	if method == directory {
+		err = os.Mkdir(downloadInput, 0644)
+		if err != nil {
+			return nil, err, func() error { return nil }
+		}
+	} else if method == regular {
+		_ = os.Truncate(downloadInput, 0)
+		// error will just be if it doesn't exist, which is fine
+	}
+	var files = make([]*os.File, 1)
+	var getOrOpenFileCall = func (number uint32) (*os.File, error) {
+		var existingFile = files[number]
+		if existingFile != nil {
+			return existingFile, nil
+		}
+
+		var file *os.File
+		var err error
+		if method == regular {
+			file, err = os.OpenFile(downloadInput, syscall.O_CREAT | syscall.O_WRONLY, 0666)
+		} else if method == blockDevice {
+			file, err = directio.OpenFile(downloadInput, syscall.O_SYNC | syscall.O_WRONLY, 0666)
+		} else if method == directory {
+			file, err = os.OpenFile(fmt.Sprintf("%s/%d", downloadInput, number), syscall.O_CREAT | syscall.O_WRONLY, 0666)
+		}
+		files[number] = file
+		return file, err
+	}
 	var block []byte
-	if directBlock {
+	if method == blockDevice {
 		block = directio.AlignedBlock(directio.BlockSize)
 	} else {
 		block = make([]byte, blockSize)
 	}
-	return FileAndBuffer{
-		file,
+	return FilesAndBuffer{
+		func(chunk ChunkRecord) (*os.File, ChunkRecord, error) {
+			if method != directory {
+				f, err := getOrOpenFileCall(0)
+				return f, chunk, err
+			}
+
+			f, err := getOrOpenFileCall(chunk.index / uint32(numberOfDirFiles))
+			return f, ChunkRecord{
+				start:  chunk.start % chunkMod,
+				length: chunk.length,
+				index:  chunk.index,
+			}, err
+		},
 		block,
-		directBlock,
-	}, err, file.Close
+		method == blockDevice,
+	}, err, func () error {
+		for _, file := range files {
+			if file != nil {
+				err := file.Close()
+				if err != nil {
+					return err
+				}
+			}
+		}
+		return nil
+	}
 }
 
 func init() {
@@ -104,5 +185,7 @@ func init() {
 	downloadCmd.Flags().StringVar(&downloadInput, "output", "", "Output file path")
 	downloadCmd.Flags().StringVar(&downloadKey, "key", "", "S3 Key")
 	downloadCmd.Flags().BoolVar(&drop, "drop", false, "Drop all data once downloaded - used for testing network speed in isolation")
+	downloadCmd.Flags().BoolVar(&dir, "dir", false, "Download as collection of files")
 	downloadCmd.PersistentFlags().Uint8Var(&threadCount, "threadCount", 8, "Number of parallel streams to S3")
+	downloadCmd.PersistentFlags().Uint8Var(&numberOfDirFiles, "numberOfDirFiled", 8, "Number of files to use in directory mode")
 }
