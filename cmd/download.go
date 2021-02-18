@@ -22,6 +22,7 @@ var dir bool
 
 var fileRecord FileRecord
 var chunkMod uint64
+var chunksPerFile uint64
 
 var downloadCmd = &cobra.Command{
 	Use:   "download",
@@ -62,7 +63,9 @@ func UpdateNumberOfDirFiles(chunks []interface{}) {
 		numberOfChunks = (numberOfChunks+1) / 2
 	}
 	numberOfDirFiles = uint8(numberOfChunks)
-	chunkMod = uint64(maxChunkSize) * (uint64(numberOfChunks) / uint64(numberOfDirFiles))
+	chunksPerFile = uint64(numberOfChunks) / uint64(numberOfDirFiles)
+	chunkMod = uint64(maxChunkSize) * chunksPerFile
+
 }
 
 type FilesAndBuffer struct  {
@@ -156,7 +159,7 @@ func downloadOpenFile() (interface{}, error, func() error) {
 				return f, chunk, err
 			}
 
-			f, err := getOrOpenFileCall(chunk.index / uint32(numberOfDirFiles))
+			f, err := getOrOpenFileCall(chunk.index / uint32(chunksPerFile))
 			return f, ChunkRecord{
 				start:  chunk.start % chunkMod,
 				length: chunk.length,
