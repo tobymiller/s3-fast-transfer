@@ -124,7 +124,7 @@ func downloadOpenFile() (interface{}, error, func() error) {
 		_ = os.Truncate(downloadInput, 0)
 		// error will just be if it doesn't exist, which is fine
 	}
-	var files = make([]*os.File, 1)
+	var files = make([]*os.File, numberOfDirFiles)
 	var getOrOpenFileCall = func (number uint32) (*os.File, error) {
 		var existingFile = files[number]
 		if existingFile != nil {
