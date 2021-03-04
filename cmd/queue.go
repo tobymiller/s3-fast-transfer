@@ -40,7 +40,7 @@ func RunThreads(threadFunc ThreadFunc, inputs []interface{}, threadDataFunc Thre
 					if err == nil {
 						break
 					} else {
-						fmt.Printf("encountered error: %e", err)
+						fmt.Printf("encountered error: %s\n", err)
 					}
 				}
 				results <- ThreadResponse{

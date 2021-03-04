@@ -34,7 +34,16 @@ var downloadCmd = &cobra.Command{
 			bucket:     bucket,
 			filePrefix: downloadKey,
 		}
-		json, err := downloadJson(s3Abstract)
+		var json []byte
+		var err error
+		for j := uint8(0); j <= retries; j++ {
+			json, err = downloadJson(s3Abstract)
+			if err == nil {
+				break
+			} else {
+				fmt.Printf("encountered error: %s\n", err)
+			}
+		}
 		if err != nil {
 			panic(err)
 		}

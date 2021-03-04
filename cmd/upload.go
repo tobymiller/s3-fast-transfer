@@ -2,6 +2,7 @@ package cmd
 
 import (
 	json2 "encoding/json"
+	"fmt"
 	"os"
 	"syscall"
 
@@ -39,7 +40,14 @@ var uploadCmd = &cobra.Command{
 		}
 		chunks := GetChunksForFile(record)
 		RunThreads(uploadPart, chunks, uploadOpenFile, int(uploadThreadCount), retries)
-		uploadJson(s3Abstract, recordJson)
+		for j := uint8(0); j <= retries; j++ {
+			err := uploadJson(s3Abstract, recordJson)
+			if err != nil {
+				break
+			} else {
+				fmt.Printf("encountered error: %s\n", err)
+			}
+		}
 	},
 }
 
