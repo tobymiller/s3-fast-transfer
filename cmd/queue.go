@@ -3,10 +3,12 @@
 
 package cmd
 
+import "fmt"
+
 type ThreadDataFunc func() (interface{}, error, func() error)
 type ThreadFunc func(input interface{}, threadData interface{}) (interface{}, error)
 
-func RunThreads(threadFunc ThreadFunc, inputs []interface{}, threadDataFunc ThreadDataFunc, threadCount int) []interface{} {
+func RunThreads(threadFunc ThreadFunc, inputs []interface{}, threadDataFunc ThreadDataFunc, threadCount int, retries uint8) []interface{} {
 	type Indexed struct {
 		i int
 		t interface{}
@@ -31,7 +33,16 @@ func RunThreads(threadFunc ThreadFunc, inputs []interface{}, threadDataFunc Thre
 		}
 		go func(tasks <-chan Indexed, results chan<- ThreadResponse, threadData interface{}, dispose func() error) {
 			for task := range tasks {
-				r, err := threadFunc(task.t, threadData)
+				var r interface{}
+				var err error
+				for j := uint8(0); j <= retries; j++ {
+					r, err = threadFunc(task.t, threadData)
+					if err == nil {
+						break
+					} else {
+						fmt.Printf("encountered error: %e", err)
+					}
+				}
 				results <- ThreadResponse{
 					index:  task.i,
 					response: r,

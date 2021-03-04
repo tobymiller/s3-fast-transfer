@@ -47,7 +47,7 @@ var downloadCmd = &cobra.Command{
 		rand.Seed(time.Now().UnixNano())
 		rand.Shuffle(len(chunks), func(i, j int) { chunks[i], chunks[j] = chunks[j], chunks[i] })
 		start := time.Now()
-		RunThreads(downloadPart, chunks, downloadOpenFile, int(threadCount))
+		RunThreads(downloadPart, chunks, downloadOpenFile, int(threadCount), retries)
 		timeTotal := time.Since(start)
 		speed := float64(fileRecord.FileSize) / timeTotal.Seconds()
 		fmt.Printf("Download completed in %d ms\n", timeTotal.Milliseconds())

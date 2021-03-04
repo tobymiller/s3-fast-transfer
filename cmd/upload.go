@@ -38,7 +38,7 @@ var uploadCmd = &cobra.Command{
 			panic(err)
 		}
 		chunks := GetChunksForFile(record)
-		RunThreads(uploadPart, chunks, uploadOpenFile, int(uploadThreadCount))
+		RunThreads(uploadPart, chunks, uploadOpenFile, int(uploadThreadCount), retries)
 		uploadJson(s3Abstract, recordJson)
 	},
 }
