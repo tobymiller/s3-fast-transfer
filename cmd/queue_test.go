@@ -15,7 +15,7 @@ func T() (interface{}, error, func() error) {
 	}
 }
 func TestRunThreads(t *testing.T) {
-	result := RunThreads(F, []interface{} {1, 2, 3}, T, 2)
+	result := RunThreads(F, []interface{} {1, 2, 3}, T, 2, 0)
 	if !reflect.DeepEqual(result, []interface{} {3, 4, 5}) {
 		t.Errorf("Failure in threads test")
 	}
